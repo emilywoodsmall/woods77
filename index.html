@@ -3,138 +3,79 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Test Page</title>
+  <title>woods77.com</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,700;1,300&display=swap');
-
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    :root {
-      --bg: #f5f0e8;
-      --ink: #1a1410;
-      --accent: #c84b2f;
-      --muted: #8a7f72;
-      --border: #d4c9b8;
-    }
-
     body {
-      background: var(--bg);
-      color: var(--ink);
-      font-family: 'DM Mono', monospace;
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      padding: 2rem;
+      background: #fff;
+      color: #1a1a1a;
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 16px;
+      line-height: 1.7;
+      padding: 0 1.5rem;
     }
 
-    .card {
-      background: white;
-      border: 1.5px solid var(--border);
-      border-radius: 2px;
-      padding: 3rem 3.5rem;
-      max-width: 520px;
-      width: 100%;
-      box-shadow: 6px 6px 0 var(--border);
-      animation: slideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+    .page {
+      max-width: 620px;
+      margin: 0 auto;
+      padding: 5rem 0 6rem;
     }
 
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to   { opacity: 1; transform: translateY(0); }
+    .intro p {
+      font-size: 1rem;
+      color: #555;
+      line-height: 1.75;
     }
 
-    .label {
-      font-size: 0.65rem;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      color: var(--accent);
-      margin-bottom: 0.75rem;
+    hr {
+      border: none;
+      border-top: 1px solid #e5e5e5;
+      margin: 2rem 0;
     }
 
-    h1 {
-      font-family: 'Fraunces', serif;
-      font-size: 2.8rem;
-      font-weight: 700;
-      line-height: 1.1;
-      margin-bottom: 1.5rem;
-    }
+    .essay-list { list-style: none; }
 
-    p {
-      font-size: 0.8rem;
-      line-height: 1.8;
-      color: var(--muted);
-      margin-bottom: 2rem;
-    }
-
-    .divider {
-      height: 1px;
-      background: var(--border);
-      margin-bottom: 2rem;
-    }
-
-    .meta {
+    .essay-list li {
+      padding: 0.85rem 0;
       display: flex;
       justify-content: space-between;
-      font-size: 0.7rem;
-      color: var(--muted);
+      align-items: baseline;
+      gap: 1.5rem;
     }
 
-    .status {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      color: #2a8a4a;
+    .essay-link {
+      font-size: 1rem;
+      color: #2a52a0;
+      text-decoration: none;
     }
+    .essay-link:hover { text-decoration: underline; }
 
-    .dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: currentColor;
-      animation: pulse 2s infinite;
+    .essay-date {
+      font-size: 0.82rem;
+      color: #999;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: 0.3; }
-    }
-
-    button {
-      display: block;
-      width: 100%;
-      margin-top: 1.5rem;
-      padding: 0.85rem;
-      background: var(--ink);
-      color: var(--bg);
-      border: none;
-      font-family: 'DM Mono', monospace;
-      font-size: 0.75rem;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      cursor: pointer;
-      transition: background 0.2s, transform 0.1s;
-    }
-
-    button:hover  { background: var(--accent); }
-    button:active { transform: scale(0.98); }
   </style>
 </head>
 <body>
+<div class="page">
 
-  <div class="card">
-    <div class="label">HTML · Test File</div>
-    <h1>It works.</h1>
-    <p>
-      This is a minimal test page confirming your HTML file loads correctly in the browser.
-      Everything below is just for show — the real victory is that you're reading this.
-    </p>
-    <div class="divider"></div>
-    <div class="meta">
-      <span>test.html</span>
-      <span class="status"><span class="dot"></span> loaded</span>
-    </div>
-    <button onclick="this.textContent = '✓ confirmed'">run test</button>
+  <div class="intro">
+    <p>Your description here.</p>
   </div>
 
+  <hr>
+
+  <ul class="essay-list">
+    <li>
+      <a class="essay-link" href="essay.html">Essay Title</a>
+      <span class="essay-date">DD Mon YYYY</span>
+    </li>
+    <!-- Copy the <li> block above to add new essays -->
+  </ul>
+
+</div>
 </body>
 </html>
