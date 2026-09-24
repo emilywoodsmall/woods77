@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transit Schedule Adherence Analyzer — woods77.com</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #fff;
+      color: #1a1a1a;
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 16px;
+      line-height: 1.7;
+      padding: 0 1.5rem;
+    }
+
+    .page {
+      max-width: 620px;
+      margin: 0 auto;
+      padding: 4rem 0 6rem;
+    }
+
+    .top-nav { margin-bottom: 3.5rem; }
+
+    .top-nav a, .article-footer a {
+      font-size: 0.88rem;
+      color: #999;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .top-nav a:hover, .article-footer a:hover { color: #1a1a1a; }
+
+    .article-header {
+      margin-bottom: 2.5rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid #e5e5e5;
+    }
+
+    .article-header h1 {
+      font-size: clamp(1.5rem, 3.5vw, 2rem);
+      font-weight: bold;
+      line-height: 1.3;
+      margin-bottom: 0.9rem;
+    }
+
+    .article-meta { font-size: 0.82rem; color: #999; }
+
+    .article-body p, .article-body li {
+      font-size: 1rem;
+      line-height: 1.82;
+      color: #222;
+    }
+    .article-body p { margin-bottom: 1.4rem; }
+
+    .article-body h2 {
+      font-size: 1.1rem;
+      font-weight: bold;
+      margin: 2.2rem 0 0.9rem;
+    }
+
+    .article-body ol, .article-body ul { margin: 0 0 1.4rem 1.4rem; }
+    .article-body li { margin-bottom: 0.4rem; }
+
+    .article-body a { color: #1a1a1a; }
+
+    .article-body code {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.9rem;
+    }
+
+    .article-body pre {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.85rem;
+      line-height: 1.55;
+      background: #f6f6f6;
+      border: 1px solid #e5e5e5;
+      padding: 0.9rem 1rem;
+      margin: 0 0 1.4rem;
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    .article-body table {
+      border-collapse: collapse;
+      font-size: 0.92rem;
+      margin: 0 0 1.4rem;
+      width: 100%;
+    }
+    .article-body th, .article-body td {
+      border-bottom: 1px solid #e5e5e5;
+      padding: 0.35rem 0.5rem 0.35rem 0;
+      text-align: left;
+      vertical-align: top;
+    }
+    .article-body th { font-weight: bold; }
+
+    .article-footer { margin-top: 3.5rem; }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <nav class="top-nav">
+    <a href="index.html">← woods77.com</a>
+  </nav>
+
+  <header class="article-header">
+    <h1>Transit Schedule Adherence Analyzer</h1>
+    <div class="article-meta">September 2026</div>
+  </header>
+
+  <article class="article-body">
+
+    <p>Every run of a bus route repeats each day at the same scheduled times. This tool measures when the bus <em>actually</em> left each timepoint on every day, so the same scheduled leave time can be compared against many days of real departures, and runs that are consistently late stand out.</p>
+
+    <p>It works with any transit agency that publishes a standard GTFS schedule and GTFS-Realtime vehicle positions. Nothing in the code is specific to one agency. It was first tested on Butler County Regional Transit Authority (Ohio), where it measured 87% of more than 10,000 scheduled stop visits in a day across 13 routes.</p>
+
+    <h2>Downloads</h2>
+
+    <ul>
+      <li><a href="https://github.com/emilywoodsmall/transit-delay-prediction/archive/refs/heads/main.zip">Download the code (zip)</a></li>
+      <li><a href="https://github.com/emilywoodsmall/transit-delay-prediction">Browse the code on GitHub</a></li>
+    </ul>
+
+    <h2>What it produces</h2>
+
+    <table>
+      <tr><th>File</th><th>Contents</th></tr>
+      <tr><td><code>leave_times.csv</code></td><td>One row per run, timepoint and day: scheduled leave time, actual leave time, minutes late.</td></tr>
+      <tr><td><code>leave_times_by_run.csv</code></td><td>One row per run and timepoint, one column per day holding that day's minutes late.</td></tr>
+      <tr><td><code>report.html</code></td><td>Route-by-route chart of every departure against its scheduled time, and a table of all departures.</td></tr>
+    </table>
+
+    <p>A row of <code>leave_times.csv</code> looks like this:</p>
+
+<pre>service_date,route,trip_id,stop_name,scheduled_leave,actual_leave,minutes_late
+2026-09-16,BL,WkOBLBL0830,Breiel Blvd at McDonalds,09:15:00,09:12:45,-2.2</pre>
+
+    <p>A Parquet copy (<code>leave_times.parquet</code>) keeps column types and loads directly into Python, R, DuckDB or a spreadsheet.</p>
+
+    <h2>How it works</h2>
+
+    <ol>
+      <li>Each GPS position a bus reports is placed at a distance along its route, using the route's path from the schedule. Positions only move forward, so loop routes and routes that double back are handled.</li>
+      <li>The moment the bus left each timepoint is interpolated between the GPS positions just before and after it. Positions more than two minutes apart are never interpolated; those stops are left blank rather than guessed.</li>
+      <li>If the feed reports that a bus is stopped at a stop, that report is used first. If GPS shows the bus standing at the stop, arrival and departure are measured separately.</li>
+      <li>Predicted times from the feed are never used as actual times. Every estimated time records how it was measured and its uncertainty.</li>
+      <li>Each service day is measured on its own, then the days are stacked side by side. Nothing is averaged.</li>
+    </ol>
+
+    <p>Scheduled times follow the GTFS rules exactly, so trips after midnight stay on the correct service day and daylight-saving changes are handled correctly.</p>
+
+    <h2>Running it</h2>
+
+    <p>It needs Python 3.9 or newer. Install once:</p>
+
+<pre>python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -e .</pre>
+
+    <p>Then give it a schedule and your realtime files for a date range:</p>
+
+<pre>python -m tdp.history --start 2026-09-01 --end 2026-09-30 \
+    --gtfs path/to/gtfs.zip --rt path/to/realtime_folder/</pre>
+
+    <p>Realtime data can be a folder of raw GTFS-Realtime <code>.pb</code> snapshots, flattened Parquet archive files, or your own CSV export with its column names mapped in a small configuration file. Files are read one day at a time, so months of data fit on a laptop.</p>
+
+    <h2>Limitations</h2>
+
+    <ul>
+      <li>Actual times are estimates from GPS reported about every 20 seconds, typically accurate to within 10 to 30 seconds.</li>
+      <li>Missing data is not random. A tracker that was off or a detour off the mapped route leaves departures unmeasured.</li>
+      <li>Canceled trips and skipped stops cannot yet be told apart from missing data.</li>
+      <li>One schedule version is used per run, so compare runs within one schedule period.</li>
+    </ul>
+
+  </article>
+
+  <footer class="article-footer">
+    <a href="index.html">← woods77.com</a>
+  </footer>
+
+</div>
+</body>
+</html>
