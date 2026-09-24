@@ -155,7 +155,7 @@ while true; do
   sleep 20
 done</pre>
 
-    <p>Leave it running for as many days as you want. Press Control + C to stop.</p>
+    <p>Leave it running for as many hours or days as you want. Press Control + C to stop.</p>
 
     <p>You can also use a public archive like gtfsrt.io, or ask the agency if it has a private log of vehicle position history.</p>
 
@@ -170,7 +170,7 @@ pip install -e .</pre>
 
     <h3>4. Run</h3>
 
-<pre>python -m tdp.history --start 2026-09-01 --end 2026-09-30 \
+<pre>python -m tdp.history --start [YYYY-MM-DD] --end [YYYY-MM-DD] \
     --gtfs path/to/gtfs.zip --rt path/to/realtime/</pre>
 
     <h3>5. Open the results</h3>
