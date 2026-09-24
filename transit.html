@@ -97,13 +97,32 @@
     .article-body th { font-weight: bold; }
 
     .article-footer { margin-top: 3.5rem; }
+
+    .report-frame {
+      width: 100%;
+      height: 900px;
+      border: 1px solid #e5e5e5;
+      margin: 0 0 0.6rem;
+    }
+    .article-body h3 {
+      font-size: 1rem;
+      font-weight: bold;
+      margin: 1.6rem 0 0.6rem;
+    }
+    .note {
+      border-left: 2px solid #e5e5e5;
+      padding-left: 1rem;
+      color: #444;
+    }
+    .frame-note { font-size: 0.85rem; color: #999; margin-bottom: 1.4rem; }
+    .article-body td.num, .article-body th.num { text-align: right; padding-right: 0.8rem; }
   </style>
 </head>
 <body>
 <div class="page">
 
   <nav class="top-nav">
-    <a href="index.html">← woods77.com</a>
+    <a href="/">← woods77.com</a>
   </nav>
 
   <header class="article-header">
@@ -117,12 +136,71 @@
 
     <p>It works with any transit agency that publishes a standard GTFS schedule and GTFS-Realtime vehicle positions. Nothing in the code is specific to one agency. It was first tested on Butler County Regional Transit Authority (Ohio), where it measured 87% of more than 10,000 scheduled stop visits in a day across 13 routes.</p>
 
-    <h2>Downloads</h2>
+    <h2>Instructions</h2>
 
-    <ul>
-      <li><a href="https://github.com/emilywoodsmall/transit-delay-prediction/archive/refs/heads/main.zip">Download the code (zip)</a></li>
-      <li><a href="https://github.com/emilywoodsmall/transit-delay-prediction">Browse the code on GitHub</a></li>
-    </ul>
+    <p>You need two kinds of data: the agency's <strong>schedule (GTFS)</strong>, which is almost always public and easy to find, and a record of where its buses actually were <strong>(GTFS-Realtime Vehicle Positions)</strong>, which usually has to be collected over time. The steps below cover both, then installing and running the tool.</p>
+
+    <h3>Step 1. Get the schedule (GTFS)</h3>
+
+    <p>GTFS is a zip file of text tables (<code>stops.txt</code>, <code>trips.txt</code>, <code>stop_times.txt</code> and others) describing every scheduled trip. Almost every US transit agency publishes one for Google Maps and other apps, so it is very likely available.</p>
+
+    <ol>
+      <li><strong>Check the agency's website.</strong> Look for a page called "Developers", "Open data", "GTFS" or "App developers". The download is usually a link ending in <code>.zip</code>.</li>
+      <li><strong>Or search a directory.</strong> <a href="https://mobilitydatabase.org">Mobility Database</a> and <a href="https://www.transit.land">Transitland</a> list thousands of agencies. Search for the agency name and download its GTFS feed.</li>
+      <li><strong>Use the schedule version that was in effect for your dates.</strong> Agencies publish a new GTFS when service changes (often each season or semester). Open <code>feed_info.txt</code> or <code>calendar.txt</code> inside the zip to see which dates it covers. Transitland keeps older versions if you need a past schedule.</li>
+    </ol>
+
+    <p>Keep the zip as downloaded. You do not need to unzip it; the tool reads a <code>.zip</code> or a folder.</p>
+
+    <h3>Step 2. Get realtime vehicle positions (GTFS-Realtime)</h3>
+
+    <p>GTFS-Realtime is a live feed that reports each bus's GPS position about every 15–30 seconds. The tool needs the <strong>Vehicle Positions</strong> feed. (A feed that only has "Trip Updates", which are arrival predictions, is not enough.) The live feed only ever shows the current moment and most agencies do not keep its history, so you need one of these:</p>
+
+    <p><strong>Option A: Collect it yourself (most reliable).</strong></p>
+
+    <ol>
+      <li><strong>Find the feed's URL.</strong> It is usually listed on the same developer page as the GTFS, or under the agency's entry on Mobility Database or Transitland. Vehicle Positions URLs often contain words like <code>vehiclepositions</code> or <code>VehiclePositions.pb</code>.</li>
+      <li><strong>Check whether it needs an API key.</strong> Some agencies require a free registration and an API key, which is sent with each request. The developer page explains how.</li>
+      <li><strong>Save a snapshot every 20 seconds.</strong> On a Mac or Linux computer, open Terminal and run the following, replacing the URL with the agency's Vehicle Positions URL:
+<pre>mkdir -p realtime
+while true; do
+  curl -s -o "realtime/vp_$(date -u +%Y-%m-%dT%H-%M-%SZ).pb" \
+    "https://example-agency.com/gtfs-rt/vehiclepositions"
+  sleep 20
+done</pre>
+        Each snapshot is saved with the time in its file name, which the tool uses. If the feed needs an API key, add it to the <code>curl</code> line as the agency instructs, for example <code>-H "x-api-key: YOUR_KEY"</code>. Press Control + C to stop.</li>
+      <li><strong>Leave it running for as many days as you want to study.</strong> On a Mac, run <code>caffeinate -i</code> in a second Terminal window to stop the computer from sleeping. A small agency produces a few thousand small files per day, typically well under 1 GB per month. A Raspberry Pi works well as an always-on collector.</li>
+    </ol>
+
+    <p><strong>Option B: Download past data from a public archive.</strong> Some services record agencies' feeds and publish the history. The tool can download from gtfsrt.io directly: add the agency's Vehicle Positions URL to its configuration file under <code>archive: vehicle_positions_url:</code>, and leave out <code>--rt</code> when running it. Check that your agency is covered and which dates are available before relying on it.</p>
+
+    <p><strong>Option C: Ask the agency.</strong> Many agencies keep automatic vehicle location (AVL) records from their own systems and can export them as a CSV. The tool reads CSV files once their column names are mapped in the configuration file.</p>
+
+    <p class="note">Realtime data must cover the whole service day. In the Americas, evening trips run past midnight UTC, so a service day's data can span two calendar dates of files. Give the tool the whole folder and it sorts every record into its correct day.</p>
+
+    <h3>Step 3. Install the tool</h3>
+
+    <p><a href="/files/transit-delay-prediction.zip" download>Download the code (zip)</a> and unzip it. It needs Python 3.9 or newer. Open Terminal in the unzipped folder and run once:</p>
+
+<pre>python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -e .</pre>
+
+    <p>In a new Terminal window later, run <code>source .venv/bin/activate</code> again from the same folder before using the tool.</p>
+
+    <h3>Step 4. Run it</h3>
+
+    <p>Point it at the schedule and the realtime folder, with the range of service dates to measure:</p>
+
+<pre>python -m tdp.history --start 2026-09-01 --end 2026-09-30 \
+    --gtfs path/to/gtfs.zip --rt path/to/realtime/</pre>
+
+    <p>It prints one line per day showing how many departures it measured. Files are read one day at a time, so months of data fit on a laptop, and days already processed are reused if you rerun with a longer range.</p>
+
+    <h3>Step 5. Open the results</h3>
+
+    <p>Results are written to <code>output/&lt;feed&gt;/history_&lt;start&gt;_to_&lt;end&gt;/</code>. Open <code>report.html</code> in a browser to see every route, or open <code>leave_times.csv</code> in a spreadsheet. The file <code>details/daily_summary.csv</code> shows how much of each day was measured; check it first, since a day with little realtime data tells you little.</p>
 
     <h2>What it produces</h2>
 
@@ -140,6 +218,41 @@
 
     <p>A Parquet copy (<code>leave_times.parquet</code>) keeps column types and loads directly into Python, R, DuckDB or a spreadsheet.</p>
 
+    <h2>Example: Butler County RTA, 16 September 2026</h2>
+
+    <p>Below is the actual report produced for one weekday of Butler County Regional Transit Authority service. Use Previous and Next to move through all 13 routes. Each dot is one bus leaving one timepoint; dots above the line left late, dots below it left early.</p>
+
+    <iframe class="report-frame" src="/files/bcrta-2026-09-16-report.html" title="Butler County RTA timepoint leave times, 16 September 2026" loading="lazy"></iframe>
+    <p class="frame-note"><a href="/files/bcrta-2026-09-16-report.html">Open the report on its own page</a></p>
+
+    <h2>What the Butler County data shows</h2>
+
+    <p>Of 1,796 scheduled timepoint departures that day, 1,547 (86%) had enough GPS data to measure. Across the system, 78% left on time (between 1 minute early and 5 minutes late), 17% left more than 5 minutes late and 5% left more than a minute early. The typical departure was about 2 minutes behind schedule.</p>
+
+    <table>
+      <tr><th>Route</th><th class="num">Measured</th><th class="num">On time</th><th class="num">Late</th><th class="num">Early</th><th class="num">Typical</th></tr>
+      <tr><td>CLX CincyLink Express</td><td class="num">21</td><td class="num">24%</td><td class="num">62%</td><td class="num">14%</td><td class="num">+6.4 min</td></tr>
+      <tr><td>CL CincyLink</td><td class="num">24</td><td class="num">29%</td><td class="num">58%</td><td class="num">13%</td><td class="num">+5.6 min</td></tr>
+      <tr><td>RL Red Line</td><td class="num">98</td><td class="num">50%</td><td class="num">50%</td><td class="num">0%</td><td class="num">+5.1 min</td></tr>
+      <tr><td>GL Gold Line</td><td class="num">99</td><td class="num">61%</td><td class="num">33%</td><td class="num">6%</td><td class="num">+4.2 min</td></tr>
+      <tr><td>R3 Oxford–Forest Park</td><td class="num">158</td><td class="num">76%</td><td class="num">23%</td><td class="num">1%</td><td class="num">+2.7 min</td></tr>
+      <tr><td>R6 Job Connector</td><td class="num">62</td><td class="num">77%</td><td class="num">19%</td><td class="num">3%</td><td class="num">+2.7 min</td></tr>
+      <tr><td>R1 Hamilton/Middletown</td><td class="num">70</td><td class="num">77%</td><td class="num">14%</td><td class="num">9%</td><td class="num">+1.6 min</td></tr>
+      <tr><td>GRL Green Line</td><td class="num">131</td><td class="num">81%</td><td class="num">14%</td><td class="num">5%</td><td class="num">+1.9 min</td></tr>
+      <tr><td>BL Blue Line</td><td class="num">154</td><td class="num">69%</td><td class="num">6%</td><td class="num">25%</td><td class="num">+1.0 min</td></tr>
+      <tr><td>O1–O4 Oxford routes</td><td class="num">730</td><td class="num">85–100%</td><td class="num">0–10%</td><td class="num">0–4%</td><td class="num">+1 to +2 min</td></tr>
+    </table>
+
+    <p><strong>The commuter routes to Cincinnati ran furthest behind.</strong> CincyLink and CincyLink Express were more than 5 minutes late at most timepoints, and their morning trips between 8 and 10 AM left 24 to 41 minutes late. Several consecutive trips were late by similar amounts, which is the pattern of one morning delay carrying through a vehicle's schedule rather than a string of separate problems.</p>
+
+    <p><strong>A few timepoints are late on most trips.</strong> On the R3, Miami Station D, the Meijer/West Hamilton Park &amp; Ride and Market Street Station (Area B) were typically 5 minutes late, with nearly half of departures more than 5 minutes behind. On the Gold Line, Baltimore St at 14th Ave, First Ave at Clinton St and Yankee Rd at Meadow Ave showed the same pattern. These are the first candidates for schedule adjustments, once more days confirm them.</p>
+
+    <p><strong>The Blue Line has the opposite problem.</strong> It was rarely late, but a quarter of its departures left timepoints more than a minute early, which means riders arriving on time could miss the bus. That suggests its running times are longer than needed in places.</p>
+
+    <p><strong>The Oxford routes (O1–O4) were the most reliable,</strong> leaving on time at 85–100% of timepoints. Lateness across the whole system peaked around 8 AM, noon and 4 PM, when about 22% of departures left more than 5 minutes late.</p>
+
+    <p><strong>Coverage matters when reading the numbers.</strong> The Red Line had no GPS data after about 1:30 PM, so only 58% of its departures could be measured and its afternoon performance is unknown. The data file used ends at 8 PM Eastern, so evening trips are not included. These results describe a single weekday; running the tool over several weeks shows which patterns repeat.</p>
+
     <h2>How it works</h2>
 
     <ol>
@@ -152,35 +265,10 @@
 
     <p>Scheduled times follow the GTFS rules exactly, so trips after midnight stay on the correct service day and daylight-saving changes are handled correctly.</p>
 
-    <h2>Running it</h2>
-
-    <p>It needs Python 3.9 or newer. Install once:</p>
-
-<pre>python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-pip install -e .</pre>
-
-    <p>Then give it a schedule and your realtime files for a date range:</p>
-
-<pre>python -m tdp.history --start 2026-09-01 --end 2026-09-30 \
-    --gtfs path/to/gtfs.zip --rt path/to/realtime_folder/</pre>
-
-    <p>Realtime data can be a folder of raw GTFS-Realtime <code>.pb</code> snapshots, flattened Parquet archive files, or your own CSV export with its column names mapped in a small configuration file. Files are read one day at a time, so months of data fit on a laptop.</p>
-
-    <h2>Limitations</h2>
-
-    <ul>
-      <li>Actual times are estimates from GPS reported about every 20 seconds, typically accurate to within 10 to 30 seconds.</li>
-      <li>Missing data is not random. A tracker that was off or a detour off the mapped route leaves departures unmeasured.</li>
-      <li>Canceled trips and skipped stops cannot yet be told apart from missing data.</li>
-      <li>One schedule version is used per run, so compare runs within one schedule period.</li>
-    </ul>
-
   </article>
 
   <footer class="article-footer">
-    <a href="index.html">← woods77.com</a>
+    <a href="/">← woods77.com</a>
   </footer>
 
 </div>
