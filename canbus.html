@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CAN Bus Fleet Tracker – Emily E. Woodsmall</title>
+<meta name="description" content="A Bluetooth odometer logger prototype that reads truck mileage from the J1939 network with a Raspberry Pi Pico 2 W and exports it to Excel.">
+<style>
+  body {
+    margin: 0;
+    background: #fff;
+    color: #000;
+    font-family: "Times New Roman", Times, serif;
+    font-size: 17px;
+    line-height: 1.45;
+  }
+  .page {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 30px 20px 60px;
+  }
+  .back { font-size: 15px; }
+  h1 {
+    font-size: 32px;
+    margin: 24px 0 4px;
+  }
+  .sub { margin: 0; font-style: italic; }
+  h2 {
+    font-variant: small-caps;
+    font-size: 21px;
+    margin: 34px 0 12px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #000;
+  }
+  h3 { font-size: 18px; margin: 22px 0 6px; }
+  p { margin: 0 0 10px; }
+  ul, ol { margin: 4px 0 10px; padding-left: 30px; }
+  li { margin-bottom: 5px; }
+  a { color: #000; }
+  code {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 15px;
+    background: #f0f0f0;
+    padding: 1px 4px;
+    overflow-wrap: anywhere;
+  }
+  pre {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 14px;
+    line-height: 1.4;
+    background: #f0f0f0;
+    padding: 12px 14px;
+    overflow-x: auto;
+    margin: 6px 0 14px;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  .table-wrap { overflow-x: auto; margin: 6px 0 14px; }
+  table { border-collapse: collapse; width: 100%; font-size: 16px; }
+  th, td { border: 1px solid #000; padding: 5px 9px; text-align: left; vertical-align: top; }
+  th { background: #f0f0f0; }
+  .diagram { overflow-x: auto; margin: 10px 0 14px; }
+  .diagram svg { display: block; width: 100%; min-width: 620px; height: auto; }
+  .note { border-left: 3px solid #000; padding: 4px 0 4px 12px; margin: 10px 0 14px; }
+  .footer-nav { margin-top: 40px; font-size: 15px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <p class="back"><a href="/">← woods77.com</a></p>
+
+  <h1>CAN Bus Fleet Tracker</h1>
+  <p class="sub">A Bluetooth odometer logger for heavy trucks, built with a Raspberry Pi Pico 2 W</p>
+
+  <h2>Overview</h2>
+  <p>Fleets need mileage for fuel tax reports, maintenance schedules and billing. Most of the time someone walks out and writes the odometer down by hand. This project is a small device that plugs into a truck's diagnostic port, reads the odometer from the truck's <b>J1939</b> network, and sends it over Bluetooth to a laptop. A Python script then saves each reading to an Excel file.</p>
+  <p>It is based on <a href="https://github.com/alia5/PiCCANTE">PiCCANTE</a>, an open-source CAN bus tool for the Raspberry Pi Pico. I kept the hardware idea and wrote a much simpler program that only does one job.</p>
+  <div class="note"><b>Status:</b> prototype. The decoding logic has been checked with sample J1939 messages. It has not been installed on a vehicle.</div>
+
+  <h2>How J1939 Works</h2>
+  <p>Inside a truck, the engine, transmission, brakes and dash all talk on a network called the <b>CAN bus</b>. It is two wires, CAN-High and CAN-Low, twisted together. Heavy trucks use a set of rules on top of CAN called <b>J1939</b>. Every message has a number called a <b>PGN</b> (Parameter Group Number) that says what is inside it.</p>
+  <div class="table-wrap"><table>
+    <tr><th>PGN</th><th>Name</th><th>What's inside</th></tr>
+    <tr><td>65248</td><td>Vehicle Distance</td><td>Total distance, 0.125 km per step</td></tr>
+    <tr><td>65217</td><td>High Resolution Vehicle Distance</td><td>Total distance, 5 meters per step</td></tr>
+  </table></div>
+  <p>Trucks broadcast these messages on their own, over and over. The logger does not have to ask for anything. It just listens.</p>
+
+  <h2>Parts</h2>
+  <div class="table-wrap"><table>
+    <tr><th>Part</th><th>Purpose</th></tr>
+    <tr><td>Raspberry Pi Pico 2 W</td><td>Runs the code and has built-in Bluetooth</td></tr>
+    <tr><td>SN65HVD230 CAN transceiver</td><td>Converts the truck's CAN signals to 3.3 V logic the Pico can read</td></tr>
+    <tr><td>9-pin Deutsch diagnostic cable</td><td>Plugs into the round green or black port under the dash</td></tr>
+    <tr><td>USB cable</td><td>Power while testing</td></tr>
+  </table></div>
+
+  <h2>Wiring</h2>
+  <div class="diagram">
+    <svg viewBox="0 0 700 290" role="img" aria-label="Truck pins C and D go to transceiver CANH and CANL. Transceiver CTX goes to Pico GP5, CRX to GP4, 3V3 to Pico 3V3 OUT. Ground connects truck pin A, transceiver and Pico.">
+      <g font-family="Times New Roman, Times, serif" font-size="15" fill="#000">
+        <rect x="10" y="30" width="160" height="230" fill="#fff" stroke="#000" stroke-width="1.5"/>
+        <text x="90" y="22" text-anchor="middle" font-weight="bold">Truck 9-pin plug</text>
+        <text x="22" y="85">C  CAN-High</text>
+        <text x="22" y="125">D  CAN-Low</text>
+        <text x="22" y="235">A  Ground</text>
+
+        <rect x="270" y="30" width="160" height="230" fill="#fff" stroke="#000" stroke-width="1.5"/>
+        <text x="350" y="22" text-anchor="middle" font-weight="bold">SN65HVD230</text>
+        <text x="282" y="85">CANH</text>
+        <text x="282" y="125">CANL</text>
+        <text x="418" y="85" text-anchor="end">3V3</text>
+        <text x="418" y="145" text-anchor="end">CTX</text>
+        <text x="418" y="185" text-anchor="end">CRX</text>
+        <text x="418" y="235" text-anchor="end">GND</text>
+
+        <rect x="530" y="30" width="160" height="230" fill="#fff" stroke="#000" stroke-width="1.5"/>
+        <text x="610" y="22" text-anchor="middle" font-weight="bold">Pico 2 W</text>
+        <text x="542" y="85">3V3 OUT (36)</text>
+        <text x="542" y="145">GP5 (7)</text>
+        <text x="542" y="185">GP4 (6)</text>
+        <text x="542" y="235">GND (38)</text>
+      </g>
+      <g stroke="#000" stroke-width="2" fill="none">
+        <path d="M170 80 H270"/>
+        <path d="M170 120 H270" stroke-dasharray="7 4"/>
+        <path d="M430 80 H530"/>
+        <path d="M430 140 H530"/>
+        <path d="M430 180 H530"/>
+        <path d="M430 230 H530"/>
+        <path d="M170 230 H270"/>
+      </g>
+      <g font-family="Times New Roman, Times, serif" font-size="13" font-style="italic" fill="#000">
+        <text x="480" y="134" text-anchor="middle">TX →</text>
+        <text x="480" y="174" text-anchor="middle">← RX</text>
+      </g>
+    </svg>
+  </div>
+  <div class="table-wrap"><table>
+    <tr><th>From</th><th>To</th></tr>
+    <tr><td>Truck pin C (CAN-High)</td><td>Transceiver CANH</td></tr>
+    <tr><td>Truck pin D (CAN-Low)</td><td>Transceiver CANL</td></tr>
+    <tr><td>Pico GP5 (pin 7)</td><td>Transceiver CTX</td></tr>
+    <tr><td>Pico GP4 (pin 6)</td><td>Transceiver CRX</td></tr>
+    <tr><td>Pico 3V3 OUT (pin 36)</td><td>Transceiver 3V3</td></tr>
+    <tr><td>Truck pin A, Pico GND (pin 38)</td><td>Transceiver GND</td></tr>
+  </table></div>
+  <p>Three things to know:</p>
+  <ol>
+    <li><b>Grounds must connect.</b> The truck, the transceiver and the Pico all share ground.</li>
+    <li><b>Remove the 120 Ω resistor</b> on the transceiver board (usually marked "121"). The truck's network already has its own.</li>
+    <li><b>Power from USB for testing.</b> Pin B has battery power, but it needs a buck converter to step it down first. Never put 12 V straight on the Pico.</li>
+  </ol>
+
+  <h2>Code</h2>
+  <p>The Pico program is written in C++ with the Arduino IDE. It does three things.</p>
+
+  <h3>1. Listen at 250k</h3>
+  <p>Almost every heavy truck runs J1939 at 250,000 bits per second.</p>
+  <pre><code>can = new ACAN2040(0, CAN_TX_PIN, CAN_RX_PIN, 250000, F_CPU, canCallback);</code></pre>
+
+  <h3>2. Pick out the distance message</h3>
+  <p>Every time a message comes in, the code pulls the PGN out of the message ID. If it is 65248, the odometer is in the last four bytes. J1939 sends numbers lowest byte first, so the code puts them back together and multiplies by 0.125 to get kilometers.</p>
+  <pre><code>unsigned long pgn = (id >> 8) &amp; 0xFFFF;
+
+if (pgn == 65248) {
+  unsigned long raw = msg->data[4] + (msg->data[5] * 256UL)
+                    + (msg->data[6] * 65536UL) + (msg->data[7] * 16777216UL);
+  odometerKm = raw * 0.125;
+}</code></pre>
+  <p>A value of <code>FFFFFFFF</code> means "not available," so the code skips it. Some trucks only send PGN 65217, so the code checks for that one too.</p>
+
+  <h3>3. Send it over Bluetooth</h3>
+  <p>Once a minute, the Pico sends one line of text with the truck name and the odometer in kilometers:</p>
+  <pre><code>ODO,TRUCK_01,123456.0</code></pre>
+
+  <h2>Instructions</h2>
+  <h3>1. Set up the Arduino IDE</h3>
+  <ol>
+    <li>Add the board URL in File → Preferences:<br><code>https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json</code></li>
+    <li>In Boards Manager, install <b>Raspberry Pi Pico/RP2040/RP2350</b>.</li>
+    <li>In Library Manager, install <b>ACAN2040</b>.</li>
+    <li>Select Tools → Board → <b>Raspberry Pi Pico 2 W</b>.</li>
+    <li>Select Tools → IP/Bluetooth Stack → <b>IPv4 + Bluetooth</b>.</li>
+  </ol>
+
+  <h3>2. Upload the logger</h3>
+  <p>Open <code>OdoLogger_J1939.ino</code>, change <code>truckName</code> and <code>bluetoothName</code> for the truck, and upload.</p>
+
+  <h3>3. Set up the laptop</h3>
+  <pre><code>pip install pyserial openpyxl</code></pre>
+  <p>Pair with <code>OdoLogger_TRUCK_01</code> in Bluetooth settings. Then set <code>PORT</code> at the top of <code>odometer_to_excel.py</code>:</p>
+  <ul>
+    <li>Mac: <code>/dev/cu.OdoLogger_TRUCK_01</code></li>
+    <li>Windows: the "Outgoing" COM port in Device Manager → Ports</li>
+  </ul>
+
+  <h3>4. Run it</h3>
+  <pre><code>python odometer_to_excel.py</code></pre>
+  <p>To try it without a truck, set <code>TEST_MODE = True</code> in the script. It will make up readings.</p>
+
+  <h2>Output</h2>
+  <p>The script writes <code>fleet_odometer_log.xlsx</code> with two sheets:</p>
+  <div class="table-wrap"><table>
+    <tr><th>Sheet</th><th>Contents</th></tr>
+    <tr><td>Log</td><td>Date, time, vehicle, odometer (km), odometer (miles), miles since last reading</td></tr>
+    <tr><td>Totals</td><td>First reading, last reading and total miles for each vehicle</td></tr>
+  </table></div>
+  <p>Readings where the truck did not move are skipped so the sheet stays short. The example below is made-up test-mode data.</p>
+  <div class="table-wrap"><table>
+    <tr><th>Date</th><th>Time</th><th>Vehicle</th><th>Odometer (km)</th><th>Odometer (miles)</th><th>Miles since last</th></tr>
+    <tr><td>2026-09-24</td><td>16:09:26</td><td>TEST_TRUCK</td><td>50012.0</td><td>31076.0</td><td>0</td></tr>
+    <tr><td>2026-09-24</td><td>16:10:26</td><td>TEST_TRUCK</td><td>50030.0</td><td>31087.2</td><td>11.2</td></tr>
+    <tr><td>2026-09-24</td><td>16:11:26</td><td>TEST_TRUCK</td><td>50041.0</td><td>31094.0</td><td>6.8</td></tr>
+  </table></div>
+
+  <h2>Downloads</h2>
+  <ul>
+    <li><a href="OdoLogger_J1939.ino" download>OdoLogger_J1939.ino</a> – Pico logger (C++)</li>
+    <li><a href="odometer_to_excel.py" download>odometer_to_excel.py</a> – Bluetooth to Excel script (Python)</li>
+  </ul>
+
+  <h2>Takeaways</h2>
+  <ul>
+    <li><b>Listening is easier than asking.</b> J1939 trucks broadcast most of their data, so a reader does not have to send anything.</li>
+    <li><b>Units matter.</b> The raw number means nothing until you know the scale: 0.125 km per step for one PGN, 5 meters for the other.</li>
+    <li><b>Hardware basics come first.</b> A missing ground or an extra termination resistor will stop it from working no matter how good the code is.</li>
+  </ul>
+
+  <h2>Next Steps</h2>
+  <ul>
+    <li>Bench test with a second Pico acting as a fake truck</li>
+    <li>Save readings to an SD card when no laptop is in range</li>
+    <li>Read active fault codes (J1939 DM1) alongside the mileage</li>
+  </ul>
+
+  <p class="footer-nav"><a href="/">← woods77.com</a></p>
+
+</div>
+</body>
+</html>
