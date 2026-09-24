@@ -132,7 +132,7 @@
 
   <article class="article-body">
 
-    <p>This tool compares when a bus was scheduled to leave each timepoint with when it actually left. It works with any agency that publishes GTFS and GTFS-Realtime data.</p>
+    <p>This tool compares when a bus was scheduled to leave each timepoint with when it actually left. It works with any agency that publishes GTFS and GTFS-Realtime data. This data can be valuable for assessing whether changes need to be made to a schedule or transit operations.</p>
 
     <p>I tested it on Butler County Regional Transit Authority in Ohio.</p>
 
@@ -189,7 +189,7 @@ pip install -e .</pre>
 <pre>service_date,route,trip_id,stop_name,scheduled_leave,actual_leave,minutes_late
 2026-09-16,BL,WkOBLBL0830,Breiel Blvd at McDonalds,09:15:00,09:12:45,-2.2</pre>
 
-    <h2>Example: Butler County, 16 September 2026</h2>
+    <h2>Example: Butler County, 15 August 2026</h2>
 
     <p>Use Previous and Next to see each route. Dots above the line left late. Dots below it left early.</p>
 
@@ -219,7 +219,7 @@ pip install -e .</pre>
       <li>Stops that need more time: Miami Station D, the Meijer/West Hamilton Park &amp; Ride and Market Street Station on the R3, and Baltimore St at 14th Ave, First Ave at Clinton St and Yankee Rd at Meadow Ave on the Gold Line were usually about 5 minutes late.</li>
       <li>Most reliable: the Oxford routes and the Green Line.</li>
       <li>Most in need of improvement: CincyLink and CincyLink Express. Morning trips were 24 to 41 minutes late.</li>
-      <li>Hardest times of day: around 8 AM, noon and 4 PM.</li>
+      <li>Hardest times of day: around 8 AM, noon and 4 PM. Could leave times be altered?</li>
       <li>Equipment problems: the Red Line had no GPS data after about 1:30 PM.</li>
     </ul>
 
