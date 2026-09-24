@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CAN Bus Fleet Tracker – Emily E. Woodsmall</title>
+<title>CAN Bus Fleet Tracker</title>
 <meta name="description" content="A Bluetooth odometer logger prototype that reads truck mileage from the J1939 network with a Raspberry Pi Pico 2 W and exports it to Excel.">
 <style>
   body {
@@ -73,9 +73,9 @@
   <p class="sub">A Bluetooth odometer logger for heavy trucks, built with a Raspberry Pi Pico 2 W</p>
 
   <h2>Overview</h2>
-  <p>Fleets need mileage for fuel tax reports, maintenance schedules and billing. Most of the time someone walks out and writes the odometer down by hand. This project is a small device that plugs into a truck's diagnostic port, reads the odometer from the truck's <b>J1939</b> network, and sends it over Bluetooth to a laptop. A Python script then saves each reading to an Excel file.</p>
+  <p>Fleets need mileage for fuel tax reports, maintenance schedules and billing. Most of the time someone walks out and writes the odometer down by hand, which can make the process prone to human error. This project is a small device that plugs into a truck's diagnostic port, reads the odometer from the truck's <b>J1939</b> network, and sends it over Bluetooth to a laptop. A Python script then saves each reading to an Excel file.</p>
   <p>It is based on <a href="https://github.com/alia5/PiCCANTE">PiCCANTE</a>, an open-source CAN bus tool for the Raspberry Pi Pico. I kept the hardware idea and wrote a much simpler program that only does one job.</p>
-  <div class="note"><b>Status:</b> prototype. The decoding logic has been checked with sample J1939 messages. It has not been installed on a vehicle.</div>
+  <div class="note"><b>Status:</b> prototype. The decoding logic has been checked with sample J1939 messages. It is not recommended to plug this into any vehicle without permission.</div>
 
   <h2>How J1939 Works</h2>
   <p>Inside a truck, the engine, transmission, brakes and dash all talk on a network called the <b>CAN bus</b>. It is two wires, CAN-High and CAN-Low, twisted together. Heavy trucks use a set of rules on top of CAN called <b>J1939</b>. Every message has a number called a <b>PGN</b> (Parameter Group Number) that says what is inside it.</p>
@@ -145,21 +145,16 @@
     <tr><td>Pico 3V3 OUT (pin 36)</td><td>Transceiver 3V3</td></tr>
     <tr><td>Truck pin A, Pico GND (pin 38)</td><td>Transceiver GND</td></tr>
   </table></div>
-  <p>Three things to know:</p>
-  <ol>
-    <li><b>Grounds must connect.</b> The truck, the transceiver and the Pico all share ground.</li>
-    <li><b>Remove the 120 Ω resistor</b> on the transceiver board (usually marked "121"). The truck's network already has its own.</li>
-    <li><b>Power from USB for testing.</b> Pin B has battery power, but it needs a buck converter to step it down first. Never put 12 V straight on the Pico.</li>
-  </ol>
+
 
   <h2>Code</h2>
-  <p>The Pico program is written in C++ with the Arduino IDE. It does three things.</p>
+  <p>The Pico program is written in C++ with the Arduino IDE. </p>
 
-  <h3>1. Listen at 250k</h3>
+  <h3>Listens at 250k</h3>
   <p>Almost every heavy truck runs J1939 at 250,000 bits per second.</p>
   <pre><code>can = new ACAN2040(0, CAN_TX_PIN, CAN_RX_PIN, 250000, F_CPU, canCallback);</code></pre>
 
-  <h3>2. Pick out the distance message</h3>
+  <h3>Picks out the distance message</h3>
   <p>Every time a message comes in, the code pulls the PGN out of the message ID. If it is 65248, the odometer is in the last four bytes. J1939 sends numbers lowest byte first, so the code puts them back together and multiplies by 0.125 to get kilometers.</p>
   <pre><code>unsigned long pgn = (id >> 8) &amp; 0xFFFF;
 
@@ -170,7 +165,7 @@ if (pgn == 65248) {
 }</code></pre>
   <p>A value of <code>FFFFFFFF</code> means "not available," so the code skips it. Some trucks only send PGN 65217, so the code checks for that one too.</p>
 
-  <h3>3. Send it over Bluetooth</h3>
+  <h3>Sends it over Bluetooth</h3>
   <p>Once a minute, the Pico sends one line of text with the truck name and the odometer in kilometers:</p>
   <pre><code>ODO,TRUCK_01,123456.0</code></pre>
 
@@ -220,19 +215,6 @@ if (pgn == 65248) {
     <li><a href="odometer_to_excel.py" download>odometer_to_excel.py</a> – Bluetooth to Excel script (Python)</li>
   </ul>
 
-  <h2>Takeaways</h2>
-  <ul>
-    <li><b>Listening is easier than asking.</b> J1939 trucks broadcast most of their data, so a reader does not have to send anything.</li>
-    <li><b>Units matter.</b> The raw number means nothing until you know the scale: 0.125 km per step for one PGN, 5 meters for the other.</li>
-    <li><b>Hardware basics come first.</b> A missing ground or an extra termination resistor will stop it from working no matter how good the code is.</li>
-  </ul>
-
-  <h2>Next Steps</h2>
-  <ul>
-    <li>Bench test with a second Pico acting as a fake truck</li>
-    <li>Save readings to an SD card when no laptop is in range</li>
-    <li>Read active fault codes (J1939 DM1) alongside the mileage</li>
-  </ul>
 
   <p class="footer-nav"><a href="/">← woods77.com</a></p>
 
