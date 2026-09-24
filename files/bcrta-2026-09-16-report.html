@@ -37,7 +37,6 @@ svg text { font-family: "Times New Roman", Times, serif; font-size: 13px; fill: 
 <body>
 <div class="wrap">
   <h1 id="title"></h1>
-  <p id="sub"></p>
 
   <div class="nav">
     <button id="prev" aria-label="Previous route">&larr; Previous route</button>
@@ -122,9 +121,8 @@ function show(i) {
 }
 
 $("title").textContent = `${D.feed_id.toUpperCase()} Timepoint Leave Times`;
-$("sub").textContent = (D.start === D.end ? `Service day ${D.start}` : `Service days ${D.start} to ${D.end}`) + `. Times in ${D.timezone}, rounded to the nearest minute.`;
 if (!D.routes.length) {
-  $("sub").textContent += " No timepoint departures in this period.";
+  $("title").textContent += ": no timepoint departures in this period";
 } else {
   $("route").innerHTML = D.routes.map((r, i) => `<option value="${i}">Route ${i + 1} of ${D.routes.length}: ${esc(routeLabel(r))}</option>`).join("");
   $("route").onchange = (e) => show(+e.target.value);
