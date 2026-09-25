@@ -75,7 +75,7 @@
   <h2>Overview</h2>
   <p>Most fleet management systems need mileage for fueling purposes, tax reports, maintenance schedules, etc. At my agency, this number is recorded manually. Someone writes the odometer down by hand after being read the number by a driver. This can make the process prone to human error and has resulted in service disruptions in the past. This project is a small device that plugs into a truck's diagnostic port, reads the odometer from the truck's <b>J1939</b> network, and sends it over Bluetooth to a laptop. A Python script then saves each reading to an Excel file. When the bus returns to the bus barn after a shift, it will connect to the BT device in the area, which would then log the odometer before the bus is powered off.</p>
   <p>It is based on <a href="https://github.com/alia5/PiCCANTE">PiCCANTE</a>, an open-source CAN bus tool for the Raspberry Pi Pico. I kept the hardware idea and wrote a much simpler program that only does one job.</p>
-  <div class="note"><b>Alert:</b>It is not recommended to plug this into any transit vehicle without permission.</div>
+  <div class="note"><b>Alert:</b>It is not recommended to plug this into any transit vehicle without permission. Doing so could interfere with the vehicle's systems, void warranties, or break an agency policy, and you are responsible for any damage or safety issues that result. </div>
 
   <h2>J1939</h2>
   <p>Inside a truck, the engine, transmission, brakes and dash all talk on a network called the <b>CAN bus</b>. It is CAN-High and CAN-Low twisted together. Heavy trucks commonly use J1939 protocol. Every message has a number called a PGN that says what is inside it.</p>
