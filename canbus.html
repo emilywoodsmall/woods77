@@ -73,18 +73,18 @@
   <p class="sub">A Bluetooth odometer logger for heavy trucks, built with a Raspberry Pi Pico 2 W</p>
 
   <h2>Overview</h2>
-  <p>Fleets need mileage for fuel tax reports, maintenance schedules and billing. Most of the time someone walks out and writes the odometer down by hand, which can make the process prone to human error. This project is a small device that plugs into a truck's diagnostic port, reads the odometer from the truck's <b>J1939</b> network, and sends it over Bluetooth to a laptop. A Python script then saves each reading to an Excel file.</p>
+  <p>Most fleet management systems need mileage for fueling purposes, tax reports, maintenance schedules, etc. At my agency, this number is recorded manually. Someone writes the odometer down by hand after being read the number by a driver. This can make the process prone to human error and has resulted in service disruptions in the past. This project is a small device that plugs into a truck's diagnostic port, reads the odometer from the truck's <b>J1939</b> network, and sends it over Bluetooth to a laptop. A Python script then saves each reading to an Excel file. When the bus returns to the bus barn after a shift, it will connect to the BT device in the area, which would then log the odometer before the bus is powered off.</p>
   <p>It is based on <a href="https://github.com/alia5/PiCCANTE">PiCCANTE</a>, an open-source CAN bus tool for the Raspberry Pi Pico. I kept the hardware idea and wrote a much simpler program that only does one job.</p>
-  <div class="note"><b>Status:</b> prototype. The decoding logic has been checked with sample J1939 messages. It is not recommended to plug this into any vehicle without permission.</div>
+  <div class="note"><b>Alert:</b>It is not recommended to plug this into any transit vehicle without permission.</div>
 
-  <h2>How J1939 Works</h2>
-  <p>Inside a truck, the engine, transmission, brakes and dash all talk on a network called the <b>CAN bus</b>. It is two wires, CAN-High and CAN-Low, twisted together. Heavy trucks use a set of rules on top of CAN called <b>J1939</b>. Every message has a number called a <b>PGN</b> (Parameter Group Number) that says what is inside it.</p>
+  <h2>J1939</h2>
+  <p>Inside a truck, the engine, transmission, brakes and dash all talk on a network called the <b>CAN bus</b>. It is CAN-High and CAN-Low twisted together. Heavy trucks commonly use J1939 protocol. Every message has a number called a PGN that says what is inside it.</p>
   <div class="table-wrap"><table>
     <tr><th>PGN</th><th>Name</th><th>What's inside</th></tr>
     <tr><td>65248</td><td>Vehicle Distance</td><td>Total distance, 0.125 km per step</td></tr>
     <tr><td>65217</td><td>High Resolution Vehicle Distance</td><td>Total distance, 5 meters per step</td></tr>
   </table></div>
-  <p>Trucks broadcast these messages on their own, over and over. The logger does not have to ask for anything. It just listens.</p>
+  <p>Trucks broadcast these messages on their own repeatedly. </p>
 
   <h2>Parts</h2>
   <div class="table-wrap"><table>
@@ -151,7 +151,7 @@
   <p>The Pico program is written in C++ with the Arduino IDE. </p>
 
   <h3>Listens at 250k</h3>
-  <p>Almost every heavy truck runs J1939 at 250,000 bits per second.</p>
+  <p>Most heavy trucks run J1939 at 250,000 bits per second.</p>
   <pre><code>can = new ACAN2040(0, CAN_TX_PIN, CAN_RX_PIN, 250000, F_CPU, canCallback);</code></pre>
 
   <h3>Picks out the distance message</h3>
@@ -170,7 +170,7 @@ if (pgn == 65248) {
   <pre><code>ODO,TRUCK_01,123456.0</code></pre>
 
   <h2>Instructions</h2>
-  <h3>1. Set up the Arduino IDE</h3>
+  <h3>Set up the Arduino IDE</h3>
   <ol>
     <li>Add the board URL in File → Preferences:<br><code>https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json</code></li>
     <li>In Boards Manager, install <b>Raspberry Pi Pico/RP2040/RP2350</b>.</li>
@@ -179,10 +179,10 @@ if (pgn == 65248) {
     <li>Select Tools → IP/Bluetooth Stack → <b>IPv4 + Bluetooth</b>.</li>
   </ol>
 
-  <h3>2. Upload the logger</h3>
+  <h3>Upload the logger</h3>
   <p>Open <code>OdoLogger_J1939.ino</code>, change <code>truckName</code> and <code>bluetoothName</code> for the truck, and upload.</p>
 
-  <h3>3. Set up the laptop</h3>
+  <h3>Set up the laptop</h3>
   <pre><code>pip install pyserial openpyxl</code></pre>
   <p>Pair with <code>OdoLogger_TRUCK_01</code> in Bluetooth settings. Then set <code>PORT</code> at the top of <code>odometer_to_excel.py</code>:</p>
   <ul>
@@ -190,7 +190,7 @@ if (pgn == 65248) {
     <li>Windows: the "Outgoing" COM port in Device Manager → Ports</li>
   </ul>
 
-  <h3>4. Run it</h3>
+  <h3>Run it</h3>
   <pre><code>python odometer_to_excel.py</code></pre>
   <p>To try it without a truck, set <code>TEST_MODE = True</code> in the script. It will make up readings.</p>
 
