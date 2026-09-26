@@ -70,37 +70,39 @@
   <p class="back"><a href="/">← woods77.com</a></p>
 
   <h1>CAN Bus Fleet Tracker</h1>
-  <p class="sub">A Bluetooth odometer logger for heavy trucks, built with a Raspberry Pi Pico 2 W</p>
+  <p class="sub">A Bluetooth odometer logger for heavy vehicles, built with a Raspberry Pi Pico 2 W</p>
 
   <h2>Overview</h2>
-  <p>Most fleet management systems need mileage for fueling purposes, tax reports, maintenance schedules, etc. At my agency, this number is recorded manually. Someone writes the odometer down by hand after being read the number by a driver. This can make the process prone to human error and has resulted in service disruptions in the past. This project is a small device that plugs into a truck's diagnostic port, reads the odometer from the truck's <b>J1939</b> network, and sends it over Bluetooth to a laptop. A Python script then saves each reading to an Excel file. When the bus returns to the bus barn after a shift, it will connect to the BT device in the area, which would then log the odometer before the bus is powered off.</p>
-  <p>It is based on <a href="https://github.com/alia5/PiCCANTE">PiCCANTE</a>, an open-source CAN bus tool for the Raspberry Pi Pico. I kept the hardware idea and wrote a much simpler program that only does one job.</p>
-  <div class="note"><b>Alert:</b>It is not recommended to plug this into any transit vehicle without permission. Doing so could interfere with the vehicle's systems, void warranties, or break an agency policy, and you are responsible for any damage or safety issues that result. </div>
+  <p>Most fleet management systems need mileage for fueling, tax reports, maintenance schedules, etc. At my agency, this number is recorded manually. Someone writes the odometer down by hand after being read the number by a driver. This makes the process prone to human error and has resulted in service disruptions in the past. This project is a small device that plugs into a bus's diagnostic port, reads the odometer from the vehicle's <b>J1939</b> network, and sends it over Bluetooth to a laptop. A <a href="odometer_to_excel.py">Python script</a> then saves each reading to an Excel file. When the bus returns to the bus barn after a shift, it will connect to the Bluetooth receiver in the area, which would then log the odometer before the bus is powered off.</p>
+  <p>It is based on <a href="https://github.com/alia5/PiCCANTE">PiCCANTE</a>, an open-source CAN bus tool for the Raspberry Pi Pico. I kept the hardware idea and wrote a much simpler program that only does one job. CAN on the Pico is handled by <a href="https://github.com/KevinOConnor/can2040">can2040</a> through the <a href="https://github.com/obdevel/ACAN2040">ACAN2040</a> Arduino library.</p>
+  <div class="note"><b>Alert:</b> It is not recommended to plug this into any transit vehicle without permission. Doing so could interfere with the vehicle's systems, void warranties, or break an agency policy, and you are responsible for any damage or safety issues that result. Test on the bench first (see <a href="#testing">Testing</a>) and use the listen-only wiring.</div>
 
   <h2>J1939</h2>
-  <p>Inside a truck, the engine, transmission, brakes and dash all talk on a network called the <b>CAN bus</b>. It is CAN-High and CAN-Low twisted together. Heavy trucks commonly use J1939 protocol. Every message has a number called a PGN that says what is inside it.</p>
+  <p>Inside a heavy vehicle, the engine, transmission, brakes and dash all talk on a network called the <b>CAN bus</b>. It is CAN-High and CAN-Low twisted together. Heavy vehicles commonly use the J1939 protocol, which uses 29-bit extended CAN IDs. Every message has a number called a PGN that says what is inside it. The logger uses three:</p>
   <div class="table-wrap"><table>
     <tr><th>PGN</th><th>Name</th><th>What's inside</th></tr>
-    <tr><td>65248</td><td>Vehicle Distance</td><td>Total distance, 0.125 km per step</td></tr>
     <tr><td>65217</td><td>High Resolution Vehicle Distance</td><td>Total distance, 5 meters per step</td></tr>
+    <tr><td>65248</td><td>Vehicle Distance</td><td>Total distance, 0.125 km per step</td></tr>
+    <tr><td>65271</td><td>Vehicle Electrical Power</td><td>Battery voltage, 0.05 V per step</td></tr>
   </table></div>
-  <p>Trucks broadcast these messages on their own repeatedly. </p>
+  <p>Modules broadcast these messages on their own repeatedly, so the logger only has to listen.</p>
 
   <h2>Parts</h2>
   <div class="table-wrap"><table>
     <tr><th>Part</th><th>Purpose</th></tr>
     <tr><td>Raspberry Pi Pico 2 W</td><td>Runs the code and has built-in Bluetooth</td></tr>
-    <tr><td>SN65HVD230 CAN transceiver</td><td>Converts the truck's CAN signals to 3.3 V logic the Pico can read</td></tr>
+    <tr><td>SN65HVD230 CAN transceiver</td><td>Converts the vehicle's CAN signals to 3.3 V logic the Pico can read</td></tr>
     <tr><td>9-pin Deutsch diagnostic cable</td><td>Plugs into the round green or black port under the dash</td></tr>
     <tr><td>USB cable</td><td>Power while testing</td></tr>
+    <tr><td>Second Pico + transceiver (optional)</td><td>Runs the <a href="J1939_Simulator.ino">J1939 simulator</a> for bench testing</td></tr>
   </table></div>
 
   <h2>Wiring</h2>
   <div class="diagram">
-    <svg viewBox="0 0 700 290" role="img" aria-label="Truck pins C and D go to transceiver CANH and CANL. Transceiver CTX goes to Pico GP5, CRX to GP4, 3V3 to Pico 3V3 OUT. Ground connects truck pin A, transceiver and Pico.">
+    <svg viewBox="0 0 700 290" role="img" aria-label="Vehicle pins C and D go to transceiver CANH and CANL. Transceiver CTX goes to Pico GP5, CRX to GP4, 3V3 to Pico 3V3 OUT. Ground connects truck pin A, transceiver and Pico.">
       <g font-family="Times New Roman, Times, serif" font-size="15" fill="#000">
         <rect x="10" y="30" width="160" height="230" fill="#fff" stroke="#000" stroke-width="1.5"/>
-        <text x="90" y="22" text-anchor="middle" font-weight="bold">Truck 9-pin plug</text>
+        <text x="90" y="22" text-anchor="middle" font-weight="bold">Vehicle 9-pin plug</text>
         <text x="22" y="85">C  CAN-High</text>
         <text x="22" y="125">D  CAN-Low</text>
         <text x="22" y="235">A  Ground</text>
@@ -138,36 +140,61 @@
   </div>
   <div class="table-wrap"><table>
     <tr><th>From</th><th>To</th></tr>
-    <tr><td>Truck pin C (CAN-High)</td><td>Transceiver CANH</td></tr>
-    <tr><td>Truck pin D (CAN-Low)</td><td>Transceiver CANL</td></tr>
-    <tr><td>Pico GP5 (pin 7)</td><td>Transceiver CTX</td></tr>
+    <tr><td>Vehicle pin C (CAN-High)</td><td>Transceiver CANH</td></tr>
+    <tr><td>Vehicle pin D (CAN-Low)</td><td>Transceiver CANL</td></tr>
+    <tr><td>Pico GP5 (pin 7)</td><td>Transceiver CTX (or 3V3 for listen-only, below)</td></tr>
     <tr><td>Pico GP4 (pin 6)</td><td>Transceiver CRX</td></tr>
     <tr><td>Pico 3V3 OUT (pin 36)</td><td>Transceiver 3V3</td></tr>
-    <tr><td>Truck pin A, Pico GND (pin 38)</td><td>Transceiver GND</td></tr>
+    <tr><td>Vehicle pin A, Pico GND (pin 38)</td><td>Transceiver GND</td></tr>
   </table></div>
-
+  <div class="note"><b>Remove the termination resistor.</b> Most SN65HVD230 boards have a 120 Ω resistor between CANH and CANL. The vehicle's bus is already terminated at both ends, and a third resistor on the diagnostic port lowers the bus impedance and can cause errors. Remove it before connecting to a vehicle (keep it for bench testing).</div>
+  <div class="note"><b>Listen-only wiring.</b> The can2040 library acknowledges messages, so by default the logger is an active node on the bus. Connecting the transceiver's CTX to 3V3 instead of GP5 keeps its driver off, so the logger can only listen.</div>
 
   <h2>Code</h2>
-  <p>The Pico program is written in C++ with the Arduino IDE. </p>
+  <p>The <a href="OdoLogger_J1939.ino">Pico program</a> is written in C++ with the Arduino IDE.</p>
 
   <h3>Listens at 250k</h3>
-  <p>Most heavy trucks run J1939 at 250,000 bits per second.</p>
-  <pre><code>can = new ACAN2040(0, CAN_TX_PIN, CAN_RX_PIN, 250000, F_CPU, canCallback);</code></pre>
+  <p>Most heavy vehicles run J1939 at 250,000 bits per second. Some newer ones use 500,000, which is a one-line change.</p>
+  <pre><code>#define J1939_BITRATE 250000      // some newer vehicles use 500000
 
-  <h3>Picks out the distance message</h3>
-  <p>Every time a message comes in, the code pulls the PGN out of the message ID. If it is 65248, the odometer is in the last four bytes. J1939 sends numbers lowest byte first, so the code puts them back together and multiplies by 0.125 to get kilometers.</p>
-  <pre><code>unsigned long pgn = (id >> 8) &amp; 0xFFFF;
+can = new ACAN2040(CAN_PIO, CAN_TX_PIN, CAN_RX_PIN, J1939_BITRATE, F_CPU, canCallback);</code></pre>
 
-if (pgn == 65248) {
-  unsigned long raw = msg->data[4] + (msg->data[5] * 256UL)
-                    + (msg->data[6] * 65536UL) + (msg->data[7] * 16777216UL);
-  odometerKm = raw * 0.125;
+  <h3>Decodes the PGN</h3>
+  <p>A J1939 ID packs the priority, the PGN and the sender's <b>source address</b> into 29 bits. For some message types (PDU1, when the PF byte is under 240), the middle byte is a destination address and is not part of the PGN, so the code masks it out.</p>
+  <pre><code>uint32_t j1939Pgn(uint32_t id) {
+  uint32_t pf = (id >> 16) &amp; 0xFF;
+  uint32_t pgn = (id >> 8) &amp; 0x3FFFF;   // EDP + DP + PF + PS
+  if (pf &lt; 240) {
+    pgn &amp;= 0x3FF00;                     // PDU1: drop destination address
+  }
+  return pgn;
 }</code></pre>
-  <p>A value of <code>FFFFFFFF</code> means "not available," so the code skips it. Some trucks only send PGN 65217, so the code checks for that one too.</p>
+
+  <h3>Picks out the distance</h3>
+  <p>J1939 sends numbers lowest byte first, so the code puts the four bytes back together. The raw count is kept as an integer and only converted to kilometers when it is sent, so no precision is lost on high-mileage vehicles. Values of <code>0xFB000000</code> and above mean "error" or "not available" and are skipped.</p>
+  <pre><code>bool hr = (pgn == PGN_HR_VEHICLE_DISTANCE);
+uint32_t raw = hr ? le32(&amp;msg->data[0]) : le32(&amp;msg->data[4]);
+if (raw > 0xFAFFFFFF) return;   // error / not available</code></pre>
+  <p>If a vehicle sends both distance messages, the 5-meter one is preferred and the 0.125 km one is only a fallback, so the reading never jumps between resolutions. Several modules can broadcast distance with slightly different values, so each reading includes the source address it came from, and <code>ODO_SOURCE_ADDR</code> can lock the logger to one module.</p>
+
+  <h3>Knows when data is old</h3>
+  <p>If the odometer hasn't been heard for 5 seconds (key off, bus asleep), the logger reports an error instead of repeating an old value. The CAN callback runs as an interrupt, so the main loop copies the shared data with interrupts briefly disabled.</p>
 
   <h3>Sends it over Bluetooth</h3>
-  <p>Once a minute, the Pico sends one line of text with the truck name and the odometer in kilometers:</p>
-  <pre><code>ODO,TRUCK_01,123456.0</code></pre>
+  <p>Once a minute, or right away when the laptop sends <code>READ</code>, the Pico sends one line with the vehicle name, odometer in km, which PGN it came from, battery voltage and source address:</p>
+  <pre><code>ODO,BUS_01,80467.200,J1939-HR,27.60,00
+
+ERR,BUS_01,NO_DATA    no odometer since power-up (key off? wrong bitrate? wiring?)
+ERR,BUS_01,STALE      odometer stopped updating</code></pre>
+
+  <h2 id="testing">Testing</h2>
+  <p>The <a href="J1939_Simulator.ino">J1939 simulator</a> turns a second Pico and transceiver into a fake vehicle. It broadcasts PGNs 65217, 65248 and 65271 once a second with an odometer that keeps going up.</p>
+  <ol>
+    <li>Connect the two transceivers CANH to CANH, CANL to CANL, GND to GND. Keep the 120 Ω resistor on both boards (one at each end of the bench bus).</li>
+    <li>Upload the simulator to the second Pico and open its Serial Monitor.</li>
+    <li>Check that the logger's readings match the simulator's odometer.</li>
+    <li>Press <code>h</code> to stop the high-resolution message (the logger should fall back to <code>J1939</code>) and <code>p</code> to pause (the logger should report <code>STALE</code>).</li>
+  </ol>
 
   <h2>Instructions</h2>
   <h3>Set up the Arduino IDE</h3>
@@ -180,41 +207,52 @@ if (pgn == 65248) {
   </ol>
 
   <h3>Upload the logger</h3>
-  <p>Open <code>OdoLogger_J1939.ino</code>, change <code>truckName</code> and <code>bluetoothName</code> for the truck, and upload.</p>
+  <p>Open <a href="OdoLogger_J1939.ino"><code>OdoLogger_J1939.ino</code></a>, change <code>VEHICLE_NAME</code> for the bus, and upload. The Bluetooth name becomes <code>OdoLogger_</code> plus the vehicle name. If the Serial Monitor shows <code>NO_DATA</code> and lots of parse errors, try a bitrate of 500000.</p>
 
   <h3>Set up the laptop</h3>
   <pre><code>pip install pyserial openpyxl</code></pre>
-  <p>Pair with <code>OdoLogger_TRUCK_01</code> in Bluetooth settings. Then set <code>PORT</code> at the top of <code>odometer_to_excel.py</code>:</p>
+  <p>Pair with <code>OdoLogger_BUS_01</code> in Bluetooth settings, then find the port:</p>
   <ul>
-    <li>Mac: <code>/dev/cu.OdoLogger_TRUCK_01</code></li>
+    <li>Mac: <code>/dev/cu.OdoLogger_BUS_01</code></li>
     <li>Windows: the "Outgoing" COM port in Device Manager → Ports</li>
   </ul>
 
   <h3>Run it</h3>
-  <pre><code>python odometer_to_excel.py</code></pre>
-  <p>To try it without a truck, set <code>TEST_MODE = True</code> in the script. It will make up readings.</p>
+  <p>Give <a href="odometer_to_excel.py"><code>odometer_to_excel.py</code></a> the port:</p>
+  <pre><code>python odometer_to_excel.py /dev/cu.OdoLogger_BUS_01</code></pre>
+  <p>To try it without any hardware, it can make up readings:</p>
+  <pre><code>python odometer_to_excel.py --test</code></pre>
 
   <h2>Output</h2>
   <p>The script writes <code>fleet_odometer_log.xlsx</code> with two sheets:</p>
   <div class="table-wrap"><table>
     <tr><th>Sheet</th><th>Contents</th></tr>
-    <tr><td>Log</td><td>Date, time, vehicle, odometer (km), odometer (miles), miles since last reading</td></tr>
+    <tr><td>Log</td><td>Date, time, vehicle, odometer (km), odometer (miles), miles since last reading, source, battery voltage</td></tr>
     <tr><td>Totals</td><td>First reading, last reading and total miles for each vehicle</td></tr>
   </table></div>
-  <p>Readings where the truck did not move are skipped so the sheet stays short. The example below is made-up test-mode data.</p>
+  <p>Readings where the bus did not move are skipped so the sheet stays short. Readings where the odometer goes backwards are rejected with a warning, since that means a wrong module, a bad message, or a logger moved to a different bus. The example below is made-up test-mode data.</p>
   <div class="table-wrap"><table>
-    <tr><th>Date</th><th>Time</th><th>Vehicle</th><th>Odometer (km)</th><th>Odometer (miles)</th><th>Miles since last</th></tr>
-    <tr><td>2026-09-24</td><td>16:09:26</td><td>TEST_TRUCK</td><td>50012.0</td><td>31076.0</td><td>0</td></tr>
-    <tr><td>2026-09-24</td><td>16:10:26</td><td>TEST_TRUCK</td><td>50030.0</td><td>31087.2</td><td>11.2</td></tr>
-    <tr><td>2026-09-24</td><td>16:11:26</td><td>TEST_TRUCK</td><td>50041.0</td><td>31094.0</td><td>6.8</td></tr>
+    <tr><th>Date</th><th>Time</th><th>Vehicle</th><th>Odometer (km)</th><th>Odometer (miles)</th><th>Miles since last</th><th>Source</th><th>Battery (V)</th></tr>
+    <tr><td>2026-09-24</td><td>16:09:26</td><td>TEST_BUS</td><td>80467.2</td><td>50000.0</td><td>0</td><td>J1939-HR (SA 00)</td><td>27.6</td></tr>
+    <tr><td>2026-09-24</td><td>16:09:29</td><td>TEST_BUS</td><td>80485.2</td><td>50011.2</td><td>11.2</td><td>J1939-HR (SA 00)</td><td>27.41</td></tr>
+    <tr><td>2026-09-24</td><td>16:09:32</td><td>TEST_BUS</td><td>80496.2</td><td>50018.0</td><td>6.8</td><td>J1939-HR (SA 00)</td><td>27.83</td></tr>
   </table></div>
+
+  <h2>Next steps</h2>
+  <ul>
+    <li>Compare readings with the dash and Cummins INSITE on in-service buses</li>
+    <li>Read active fault codes (DM1), which requires reassembling multi-frame J1939 messages</li>
+    <li>Add engine hours (PGN 65253) and total fuel used (PGN 65257)</li>
+    <li>Switch to BLE advertising so one receiver at the bus barn can collect every bus without pairing</li>
+    <li>Power the logger from the diagnostic port through a 12/24 V converter</li>
+  </ul>
 
   <h2>Downloads</h2>
   <ul>
     <li><a href="OdoLogger_J1939.ino" download>OdoLogger_J1939.ino</a> – Pico logger (C++)</li>
+    <li><a href="J1939_Simulator.ino" download>J1939_Simulator.ino</a> – bench-test vehicle simulator (C++)</li>
     <li><a href="odometer_to_excel.py" download>odometer_to_excel.py</a> – Bluetooth to Excel script (Python)</li>
   </ul>
-
 
   <p class="footer-nav"><a href="/">← woods77.com</a></p>
 
